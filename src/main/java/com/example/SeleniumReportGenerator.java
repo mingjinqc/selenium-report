@@ -29,11 +29,10 @@ public class SeleniumReportGenerator {
 
         String username = readUsername(jsonPath);
         if (username == null) {
-            System.err.println("❌ username not found in " + jsonPath.toString());
-            return;
+            System.err.println("❌ username not found in " + jsonPath);
+            username = ""; // use empty so browser runs for screenshot
         }
 
-        // Setup ChromeDriver
         WebDriverManager.chromedriver().setup();
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--headless=new");
@@ -41,45 +40,57 @@ public class SeleniumReportGenerator {
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--window-size=1920,1080");
         options.addArguments("--disable-gpu");
-        options.addArguments("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36");
 
         WebDriver driver = null;
         boolean isFilled = false;
         boolean isCleared = false;
 
+        Path step1 = reportDir.resolve("step1.png");
+        Path step2 = reportDir.resolve("step2.png");
+
         try {
             driver = new ChromeDriver(options);
             driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
 
-            // Step 1: Navigate
+            // Navigate to Salesforce login page
             driver.get("https://login.salesforce.com/");
-            WebElement usernameField = driver.findElement(By.id("username"));
+            System.out.println("🌐 Opened Salesforce login page");
 
-            // Step 2: Fill username
-            usernameField.sendKeys(username);
-            String filledValue = usernameField.getAttribute("value");
-            isFilled = filledValue.equals(username);
-            System.out.println("✅ Verification 1 - Field filled correctly: " + isFilled);
+            WebElement usernameField = null;
+            try {
+                usernameField = driver.findElement(By.id("username"));
+            } catch (NoSuchElementException e) {
+                System.err.println("❌ Username field not found on page.");
+            }
 
-            // Take screenshot for Step 1
-            Path step1 = reportDir.resolve("step1.png");
+            // Step 1 — try to fill username and verify
+            if (usernameField != null) {
+                usernameField.sendKeys(username);
+                String filledValue = usernameField.getAttribute("value");
+                isFilled = !username.isEmpty() && filledValue.equals(username);
+            } else {
+                isFilled = false;
+            }
+
             takeScreenshot(driver, step1.toFile());
+            System.out.println("📸 step1.png captured — username filled check: " + (isFilled ? "PASS" : "FAIL"));
 
-            // Step 3: Clear username
-            usernameField.clear();
-            String clearedValue = usernameField.getAttribute("value");
-            isCleared = clearedValue.isEmpty();
-            System.out.println("✅ Verification 2 - Field cleared correctly: " + isCleared);
+            // Step 2 — clear field only if available
+            if (usernameField != null) {
+                usernameField.clear();
+                String clearedValue = usernameField.getAttribute("value");
+                isCleared = clearedValue.isEmpty();
+            } else {
+                isCleared = false;
+            }
 
-            // Take screenshot for Step 2
-            Path step2 = reportDir.resolve("step2.png");
             takeScreenshot(driver, step2.toFile());
+            System.out.println("📸 step2.png captured — username cleared check: " + (isCleared ? "PASS" : "FAIL"));
 
-            // Step 4: Generate HTML report
+            // Generate report
             Path reportHtml = reportDir.resolve("report.html");
-            generateHtmlReport(reportHtml, step1.getFileName().toString(), step2.getFileName().toString(), isFilled, isCleared);
-
-            System.out.println("📄 Report generated: " + reportHtml.toAbsolutePath());
+            generateHtmlReport(reportHtml, step1.getFileName().toString(), step2.getFileName().toString(), isFilled, isCleared, username);
+            System.out.println("📄 Report generated at: " + reportHtml.toAbsolutePath());
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -90,7 +101,6 @@ public class SeleniumReportGenerator {
         }
     }
 
-    // Read username from JSON file
     private static String readUsername(Path jsonPath) {
         try {
             ObjectMapper mapper = new ObjectMapper();
@@ -102,18 +112,14 @@ public class SeleniumReportGenerator {
         return null;
     }
 
-    // Capture viewport screenshot
     private static void takeScreenshot(WebDriver driver, File outFile) throws IOException {
         if (driver instanceof TakesScreenshot ts) {
             byte[] bytes = ts.getScreenshotAs(OutputType.BYTES);
             Files.write(outFile.toPath(), bytes);
-        } else {
-            throw new UnsupportedOperationException("Driver does not support screenshots");
         }
     }
 
-    // Generate HTML report with pass/fail status
-    private static void generateHtmlReport(Path target, String step1Name, String step2Name, boolean filledOk, boolean clearedOk) throws IOException {
+    private static void generateHtmlReport(Path target, String step1Name, String step2Name, boolean filledOk, boolean clearedOk, String username) throws IOException {
         String html = """
             <!doctype html>
             <html lang="en">
@@ -133,6 +139,7 @@ public class SeleniumReportGenerator {
             </head>
             <body>
             <h1>Automated Selenium Test Report</h1>
+            <p><strong>Username value used:</strong> %s</p>
             <table>
               <thead>
                 <tr><th>No.</th><th>Step</th><th>Result</th><th>Screenshot</th></tr>
@@ -159,6 +166,7 @@ public class SeleniumReportGenerator {
 
         String finalHtml = String.format(
             html,
+            username.isEmpty() ? "(Not Found in username.json)" : username,
             filledOk ? "pass" : "fail", filledOk ? "PASS" : "FAIL", step1Name,
             clearedOk ? "pass" : "fail", clearedOk ? "PASS" : "FAIL", step2Name
         );
