@@ -11,7 +11,6 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Base64;
 
 public class SeleniumReportGenerator {
 
@@ -19,7 +18,8 @@ public class SeleniumReportGenerator {
         Path repoRoot = Path.of("").toAbsolutePath();
         Path jsonPath = repoRoot.resolve("username.json");
         Path reportDir = repoRoot.resolve("docs");
-        // Always recreate docs directory to ensure clean overwrite
+
+        // Ensure docs folder exists
         try {
             if (!Files.exists(reportDir)) Files.createDirectories(reportDir);
         } catch (IOException e) {
@@ -29,49 +29,58 @@ public class SeleniumReportGenerator {
 
         String username = readUsername(jsonPath);
         if (username == null) {
-            System.err.println("username not found in " + jsonPath.toString());
+            System.err.println("❌ username not found in " + jsonPath.toString());
             return;
         }
 
         // Setup ChromeDriver
         WebDriverManager.chromedriver().setup();
-
         ChromeOptions options = new ChromeOptions();
-        // Headless mode (works with modern Chrome)
-        options.addArguments("--headless=new"); // use new headless mode if available; fallback works on many runners
+        options.addArguments("--headless=new");
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--window-size=1920,1080");
         options.addArguments("--disable-gpu");
-        // use a user-agent to avoid uncommon detection
         options.addArguments("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36");
 
         WebDriver driver = null;
+        boolean isFilled = false;
+        boolean isCleared = false;
+
         try {
             driver = new ChromeDriver(options);
             driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
 
-            // 1) Navigate to Salesforce login
+            // Step 1: Navigate
             driver.get("https://login.salesforce.com/");
-
-            // Wait / locate username field by id "username"
             WebElement usernameField = driver.findElement(By.id("username"));
 
-            // Step 1: fill username
+            // Step 2: Fill username
             usernameField.sendKeys(username);
-            // Take screenshot step1.png
+            String filledValue = usernameField.getAttribute("value");
+            isFilled = filledValue.equals(username);
+            System.out.println("✅ Verification 1 - Field filled correctly: " + isFilled);
+
+            // Take screenshot for Step 1
             Path step1 = reportDir.resolve("step1.png");
-            takeElementOrViewportScreenshot(driver, step1.toFile());
+            takeScreenshot(driver, step1.toFile());
 
-            // Step 2: clear username and take screenshot
+            // Step 3: Clear username
             usernameField.clear();
-            Path step2 = reportDir.resolve("step2.png");
-            takeElementOrViewportScreenshot(driver, step2.toFile());
+            String clearedValue = usernameField.getAttribute("value");
+            isCleared = clearedValue.isEmpty();
+            System.out.println("✅ Verification 2 - Field cleared correctly: " + isCleared);
 
-            // generate HTML report
+            // Take screenshot for Step 2
+            Path step2 = reportDir.resolve("step2.png");
+            takeScreenshot(driver, step2.toFile());
+
+            // Step 4: Generate HTML report
             Path reportHtml = reportDir.resolve("report.html");
-            generateHtmlReport(reportHtml, step1.getFileName().toString(), step2.getFileName().toString());
-            System.out.println("Report generated: " + reportHtml.toAbsolutePath());
+            generateHtmlReport(reportHtml, step1.getFileName().toString(), step2.getFileName().toString(), isFilled, isCleared);
+
+            System.out.println("📄 Report generated: " + reportHtml.toAbsolutePath());
+
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -81,6 +90,7 @@ public class SeleniumReportGenerator {
         }
     }
 
+    // Read username from JSON file
     private static String readUsername(Path jsonPath) {
         try {
             ObjectMapper mapper = new ObjectMapper();
@@ -92,10 +102,9 @@ public class SeleniumReportGenerator {
         return null;
     }
 
-    private static void takeElementOrViewportScreenshot(WebDriver driver, File outFile) throws IOException {
-        // Try full page/viewport screenshot
-        if (driver instanceof TakesScreenshot) {
-            TakesScreenshot ts = (TakesScreenshot) driver;
+    // Capture viewport screenshot
+    private static void takeScreenshot(WebDriver driver, File outFile) throws IOException {
+        if (driver instanceof TakesScreenshot ts) {
             byte[] bytes = ts.getScreenshotAs(OutputType.BYTES);
             Files.write(outFile.toPath(), bytes);
         } else {
@@ -103,55 +112,57 @@ public class SeleniumReportGenerator {
         }
     }
 
-    private static void generateHtmlReport(Path target, String step1Name, String step2Name) throws IOException {
+    // Generate HTML report with pass/fail status
+    private static void generateHtmlReport(Path target, String step1Name, String step2Name, boolean filledOk, boolean clearedOk) throws IOException {
         String html = """
-                <!doctype html>
-                <html lang="en">
-                <head>
-                  <meta charset="utf-8">
-                  <meta name="viewport" content="width=device-width, initial-scale=1">
-                  <title>Test Report</title>
-                  <style>
-                    body { font-family: Arial, sans-serif; padding: 18px; }
-                    table { border-collapse: collapse; width: 100%%; max-width: 900px; }
-                    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }
-                    th { background: #f2f2f2; }
-                    img.sshot { max-width: 320px; height: auto; border: 1px solid #999; }
-                  </style>
-                </head>
-                <body>
-                <h1>Automated Test Report</h1>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>No.</th>
-                      <th>Steps</th>
-                      <th>Screenshot</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>1.</td>
-                      <td>Fill value in username field.</td>
-                      <td><img class="sshot" src="%s" alt="step1" /></td>
-                    </tr>
-                    <tr>
-                      <td>2.</td>
-                      <td>Empty value in username field.</td>
-                      <td><img class="sshot" src="%s" alt="step2" /></td>
-                    </tr>
-                    <tr>
-                      <td>3.</td>
-                      <td>Report generated and saved to repository.</td>
-                      <td>report: %s</td>
-                    </tr>
-                  </tbody>
-                </table>
-                </body>
-                </html>
-                """;
-    
-        String finalHtml = String.format(html, step1Name, step2Name, target.getFileName().toString());
+            <!doctype html>
+            <html lang="en">
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <title>Test Report</title>
+              <style>
+                body { font-family: Arial, sans-serif; padding: 18px; }
+                table { border-collapse: collapse; width: 100%%; max-width: 900px; }
+                th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }
+                th { background: #f2f2f2; }
+                .pass { color: green; font-weight: bold; }
+                .fail { color: red; font-weight: bold; }
+                img.sshot { max-width: 320px; height: auto; border: 1px solid #999; }
+              </style>
+            </head>
+            <body>
+            <h1>Automated Selenium Test Report</h1>
+            <table>
+              <thead>
+                <tr><th>No.</th><th>Step</th><th>Result</th><th>Screenshot</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1.</td>
+                  <td>Fill value in username field.</td>
+                  <td class="%s">%s</td>
+                  <td><img class="sshot" src="%s" alt="step1" /></td>
+                </tr>
+                <tr>
+                  <td>2.</td>
+                  <td>Empty value in username field.</td>
+                  <td class="%s">%s</td>
+                  <td><img class="sshot" src="%s" alt="step2" /></td>
+                </tr>
+              </tbody>
+            </table>
+            <p>Generated automatically by <b>SeleniumReportGenerator</b>.</p>
+            </body>
+            </html>
+            """;
+
+        String finalHtml = String.format(
+            html,
+            filledOk ? "pass" : "fail", filledOk ? "PASS" : "FAIL", step1Name,
+            clearedOk ? "pass" : "fail", clearedOk ? "PASS" : "FAIL", step2Name
+        );
+
         Files.writeString(target, finalHtml,
             java.nio.file.StandardOpenOption.CREATE,
             java.nio.file.StandardOpenOption.TRUNCATE_EXISTING);
