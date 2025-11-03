@@ -27,6 +27,7 @@ On every edit and commit to `main` that changes `username.json`,  a GitHub Actio
 3. Commit the change to the `main` branch.
 4. After the GitHub Action finishes, open the generated test report:
    - https://`<your-username>`.github.io/`<your-repo-name>`/report.html
+
      (Make sure GitHub Pages is enabled on the main branch → /docs folder.)
 
 ✅ Tip: Every time you commit a new `username.json`, the report and screenshots in `/docs` will be automatically updated.
