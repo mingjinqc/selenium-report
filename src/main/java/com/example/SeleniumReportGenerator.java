@@ -151,6 +151,7 @@ public class SeleniumReportGenerator {
                 </html>
                 """;
         String finalHtml = String.format(html, step1Name, step2Name, target.getFileName().toString());
-        Files.writeString(target, finalHtml);
+        Files.writeString(target, finalHtml, java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.TRUNCATE_EXISTING);
+
     }
 }
