@@ -1,19 +1,21 @@
-name: Generate Selenium Test Report and Commit
+name: Generate Selenium Test Report (only when username.json changes)
 
-# Run on any push to main
 on:
   push:
     branches:
       - main
+    paths:
+      - 'username.json'     # only trigger when this file changes
 
 permissions:
-  contents: write       # need write permission to commit back to repo
+  contents: write
 
 jobs:
   build-and-run:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout main
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           persist-credentials: true
@@ -25,35 +27,25 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Install Chromium (headless browser)
+      - name: Install Chromium
         run: |
           sudo apt-get update
-          sudo apt-get install -y chromium-browser
-          # Optional: install fonts to avoid rendering issues
-          sudo apt-get install -y fonts-liberation
+          sudo apt-get install -y chromium-browser fonts-liberation
 
-      - name: Print chrome version
-        run: |
-          if command -v chromium-browser >/dev/null 2>&1; then chromium-browser --version || true; fi
-
-      - name: Build and run Selenium generator
+      - name: Build and run Selenium script
         env:
           DISPLAY: :99
         run: |
-          # Build and run the Java program via maven exec plugin
           mvn -B -DskipTests package
           mvn -B exec:java -Dexec.mainClass=com.example.SeleniumReportGenerator
 
-      - name: Prepare to commit generated report
+      - name: Commit updated report to main
         run: |
-          git status --porcelain
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # Add or update the docs files
           git add docs/report.html docs/step1.png docs/step2.png || true
-          # If there is any change, commit and push
           if ! git diff --cached --quiet; then
-            git commit -m "Auto-generated test report [skip ci]"
+            git commit -m "Auto update report from username.json change [skip ci]"
             git push origin HEAD:main
           else
             echo "No changes to commit"
