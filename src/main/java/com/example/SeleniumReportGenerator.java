@@ -70,8 +70,11 @@ public class SeleniumReportGenerator {
 
             // generate HTML report
             Path reportHtml = reportDir.resolve("report.html");
+            System.out.println("Working directory: " + repoRoot); //
+            System.out.println("Writing report to: " + reportDir.toAbsolutePath()); //
             generateHtmlReport(reportHtml, step1.getFileName().toString(), step2.getFileName().toString());
-
+            System.out.println("Working directory: " + repoRoot); //
+            System.out.println("Writing report to: " + reportDir.toAbsolutePath()); //
             System.out.println("Report generated: " + reportHtml.toAbsolutePath());
         } catch (Exception e) {
             e.printStackTrace();
