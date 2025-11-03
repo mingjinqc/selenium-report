@@ -9,36 +9,32 @@
     table { border-collapse: collapse; width: 100%; max-width: 900px; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }
     th { background: #f2f2f2; }
+    .pass { color: green; font-weight: bold; }
+    .fail { color: red; font-weight: bold; }
     img.sshot { max-width: 320px; height: auto; border: 1px solid #999; }
   </style>
 </head>
 <body>
-<h1>Automated Test Report</h1>
+<h1>Automated Selenium Test Report</h1>
 <table>
   <thead>
-    <tr>
-      <th>No.</th>
-      <th>Steps</th>
-      <th>Screenshot</th>
-    </tr>
+    <tr><th>No.</th><th>Step</th><th>Result</th><th>Screenshot</th></tr>
   </thead>
   <tbody>
     <tr>
       <td>1.</td>
       <td>Fill value in username field.</td>
+      <td class="pass">PASS</td>
       <td><img class="sshot" src="step1.png" alt="step1" /></td>
     </tr>
     <tr>
       <td>2.</td>
       <td>Empty value in username field.</td>
+      <td class="pass">PASS</td>
       <td><img class="sshot" src="step2.png" alt="step2" /></td>
-    </tr>
-    <tr>
-      <td>3.</td>
-      <td>Report generated and saved to repository.</td>
-      <td>report: report.html</td>
     </tr>
   </tbody>
 </table>
+<p>Generated automatically by <b>SeleniumReportGenerator</b>.</p>
 </body>
 </html>
