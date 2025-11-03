@@ -113,7 +113,7 @@ public class SeleniumReportGenerator {
                   <title>Test Report</title>
                   <style>
                     body { font-family: Arial, sans-serif; padding: 18px; }
-                    table { border-collapse: collapse; width: 100%; max-width: 900px; }
+                    table { border-collapse: collapse; width: 100%%; max-width: 900px; }
                     th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }
                     th { background: #f2f2f2; }
                     img.sshot { max-width: 320px; height: auto; border: 1px solid #999; }
@@ -150,8 +150,10 @@ public class SeleniumReportGenerator {
                 </body>
                 </html>
                 """;
+    
         String finalHtml = String.format(html, step1Name, step2Name, target.getFileName().toString());
-        Files.writeString(target, finalHtml, java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.TRUNCATE_EXISTING);
-
+        Files.writeString(target, finalHtml,
+            java.nio.file.StandardOpenOption.CREATE,
+            java.nio.file.StandardOpenOption.TRUNCATE_EXISTING);
     }
 }
