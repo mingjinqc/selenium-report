@@ -1,5 +1,9 @@
 # Selenium Test + GitHub Actions Report Example
 
+What happens (when there is any commit in the Main branch)
+- docs/Step1.png and docs/Step2.png are updated 
+- docs/report.html is not updated
+
 What this does
 - On every push to `main`, a GitHub Actions workflow runs a headless Selenium script which:
   - reads `username.json`
