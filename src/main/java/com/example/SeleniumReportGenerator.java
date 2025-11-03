@@ -19,8 +19,16 @@ public class SeleniumReportGenerator {
         Path repoRoot = Path.of("").toAbsolutePath();
         Path jsonPath = repoRoot.resolve("username.json");
         Path reportDir = repoRoot.resolve("docs");
+        // Always recreate docs directory to ensure clean overwrite
         try {
-            if (!Files.exists(reportDir)) Files.createDirectories(reportDir);
+            if (Files.exists(reportDir)) {
+                Files.walk(reportDir)
+                     .sorted((a, b) -> b.compareTo(a)) // delete children first
+                     .forEach(p -> {
+                         try { Files.delete(p); } catch (IOException ignored) {}
+                     });
+            }
+            Files.createDirectories(reportDir);
         } catch (IOException e) {
             e.printStackTrace();
             return;
