@@ -1,8 +1,7 @@
 # Selenium Test + GitHub Actions Report Example
 
 ## What This Does
-On every edit and commit to `main` that changes `username.json`,  
-a GitHub Actions workflow automatically runs a headless Selenium test that:
+On every edit and commit to `main` that changes `username.json`,  a GitHub Actions workflow automatically runs a headless Selenium test that:
 
 1. Reads the username from `username.json`
 2. Opens `https://login.salesforce.com/` in a headless Chrome browser
@@ -19,6 +18,8 @@ a GitHub Actions workflow automatically runs a headless Selenium test that:
   {
     "username": "testuser@example.com"
   }
+
+---
 
 ## How to Try It Yourself
 1. Fork this repository.
