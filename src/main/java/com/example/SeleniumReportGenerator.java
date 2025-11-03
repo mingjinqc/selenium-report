@@ -21,14 +21,7 @@ public class SeleniumReportGenerator {
         Path reportDir = repoRoot.resolve("docs");
         // Always recreate docs directory to ensure clean overwrite
         try {
-            if (Files.exists(reportDir)) {
-                Files.walk(reportDir)
-                     .sorted((a, b) -> b.compareTo(a)) // delete children first
-                     .forEach(p -> {
-                         try { Files.delete(p); } catch (IOException ignored) {}
-                     });
-            }
-            Files.createDirectories(reportDir);
+            if (!Files.exists(reportDir)) Files.createDirectories(reportDir);
         } catch (IOException e) {
             e.printStackTrace();
             return;
