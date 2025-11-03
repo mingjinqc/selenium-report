@@ -1,120 +1,156 @@
 package com.example;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
-import org.testng.annotations.Test;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.Base64;
 
-public class SalesforceUsernameTest {
+public class SeleniumReportGenerator {
 
-    @Test
-    public void runLoginFlowAndGenerateReport() throws Exception {
-        // 1) read username from username.json (repo root)
-        Path projectRoot = Path.of(System.getProperty("user.dir"));
-        Path jsonPath = projectRoot.resolve("username.json");
-        if (!Files.exists(jsonPath)) {
-            throw new RuntimeException("username.json not found at: " + jsonPath);
+    public static void main(String[] args) {
+        Path repoRoot = Path.of("").toAbsolutePath();
+        Path jsonPath = repoRoot.resolve("username.json");
+        Path reportDir = repoRoot.resolve("docs");
+        try {
+            if (!Files.exists(reportDir)) Files.createDirectories(reportDir);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
         }
-        String jsonText = Files.readString(jsonPath);
-        JsonObject obj = JsonParser.parseString(jsonText).getAsJsonObject();
-        String username = obj.has("username") ? obj.get("username").getAsString() : "";
 
-        // 2) prepare output folder
-        Path reportDir = projectRoot.resolve("docs");
-        Files.createDirectories(reportDir);
+        String username = readUsername(jsonPath);
+        if (username == null) {
+            System.err.println("username not found in " + jsonPath.toString());
+            return;
+        }
 
-        // 3) start headless Chrome
+        // Setup ChromeDriver
         WebDriverManager.chromedriver().setup();
+
         ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless=new"); // new headless mode
+        // Headless mode (works with modern Chrome)
+        options.addArguments("--headless=new"); // use new headless mode if available; fallback works on many runners
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
-        options.addArguments("--window-size=1280,1024");
-        WebDriver driver = new ChromeDriver(options);
+        options.addArguments("--window-size=1920,1080");
+        options.addArguments("--disable-gpu");
+        // use a user-agent to avoid uncommon detection
+        options.addArguments("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36");
 
+        WebDriver driver = null;
         try {
-            // go to Salesforce login
+            driver = new ChromeDriver(options);
+            driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+
+            // 1) Navigate to Salesforce login
             driver.get("https://login.salesforce.com/");
 
-            // wait briefly for the username field (simple approach)
-            Thread.sleep(1500);
-
-            // find username field (Salesforce username field id is "username")
+            // Wait / locate username field by id "username"
             WebElement usernameField = driver.findElement(By.id("username"));
 
-            // Step 1: fill value and take screenshot
+            // Step 1: fill username
             usernameField.sendKeys(username);
-            takeScreenshot(driver, reportDir.resolve("step1.png"));
+            // Take screenshot step1.png
+            Path step1 = reportDir.resolve("step1.png");
+            takeElementOrViewportScreenshot(driver, step1.toFile());
 
-            // Step 2: empty value and take screenshot
+            // Step 2: clear username and take screenshot
             usernameField.clear();
-            takeScreenshot(driver, reportDir.resolve("step2.png"));
+            Path step2 = reportDir.resolve("step2.png");
+            takeElementOrViewportScreenshot(driver, step2.toFile());
 
-            // create HTML report
-            Path html = reportDir.resolve("report.html");
-            String htmlContent = buildHtmlReport();
-            Files.writeString(html, htmlContent);
+            // generate HTML report
+            Path reportHtml = reportDir.resolve("report.html");
+            generateHtmlReport(reportHtml, step1.getFileName().toString(), step2.getFileName().toString());
 
+            System.out.println("Report generated: " + reportHtml.toAbsolutePath());
+        } catch (Exception e) {
+            e.printStackTrace();
         } finally {
-            // close browser
-            driver.quit();
+            if (driver != null) {
+                try { driver.quit(); } catch (Exception ignored) {}
+            }
         }
     }
 
-    private void takeScreenshot(WebDriver driver, Path outPath) throws IOException {
-        if (driver instanceof TakesScreenshot ts) {
-            File src = ts.getScreenshotAs(OutputType.FILE);
-            Files.copy(src.toPath(), outPath);
+    private static String readUsername(Path jsonPath) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(jsonPath.toFile());
+            if (root.has("username")) return root.get("username").asText();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private static void takeElementOrViewportScreenshot(WebDriver driver, File outFile) throws IOException {
+        // Try full page/viewport screenshot
+        if (driver instanceof TakesScreenshot) {
+            TakesScreenshot ts = (TakesScreenshot) driver;
+            byte[] bytes = ts.getScreenshotAs(OutputType.BYTES);
+            Files.write(outFile.toPath(), bytes);
         } else {
-            throw new IOException("Driver does not support screenshots");
+            throw new UnsupportedOperationException("Driver does not support screenshots");
         }
     }
 
-    private String buildHtmlReport() {
-        // Simple 3x3 table as requested (No., Steps, Screenshot)
-        return """
+    private static void generateHtmlReport(Path target, String step1Name, String step2Name) throws IOException {
+        String html = """
                 <!doctype html>
-                <html>
+                <html lang="en">
                 <head>
-                  <meta charset="utf-8"/>
+                  <meta charset="utf-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1">
                   <title>Test Report</title>
                   <style>
-                    body { font-family: Arial, Helvetica, sans-serif; padding: 20px; }
-                    table { border-collapse: collapse; width: 100%; }
-                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
-                    th { background: #f4f4f4; }
-                    img { max-width: 400px; height: auto; border: 1px solid #ccc; }
+                    body { font-family: Arial, sans-serif; padding: 18px; }
+                    table { border-collapse: collapse; width: 100%; max-width: 900px; }
+                    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }
+                    th { background: #f2f2f2; }
+                    img.sshot { max-width: 320px; height: auto; border: 1px solid #999; }
                   </style>
                 </head>
                 <body>
-                  <h2>Test Report</h2>
-                  <table>
-                    <tr><th>No.</th><th>Steps</th><th>Screenshot</th></tr>
+                <h1>Automated Test Report</h1>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>No.</th>
+                      <th>Steps</th>
+                      <th>Screenshot</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     <tr>
                       <td>1.</td>
                       <td>Fill value in username field.</td>
-                      <td><a href="step1.png" target="_blank"><img src="step1.png" alt="step1"></a></td>
+                      <td><img class="sshot" src="%s" alt="step1" /></td>
                     </tr>
                     <tr>
                       <td>2.</td>
                       <td>Empty value in username field.</td>
-                      <td><a href="step2.png" target="_blank"><img src="step2.png" alt="step2"></a></td>
+                      <td><img class="sshot" src="%s" alt="step2" /></td>
                     </tr>
                     <tr>
                       <td>3.</td>
-                      <td>Summary</td>
-                      <td>Generated by Selenium test</td>
+                      <td>Report generated and saved to repository.</td>
+                      <td>report: %s</td>
                     </tr>
-                  </table>
+                  </tbody>
+                </table>
                 </body>
                 </html>
                 """;
+        String finalHtml = String.format(html, step1Name, step2Name, target.getFileName().toString());
+        Files.writeString(target, finalHtml);
     }
 }
