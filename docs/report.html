@@ -1,8 +1,44 @@
 <!doctype html>
-<html>
-<head><meta charset="utf-8"><title>Test Report (placeholder)</title></head>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Test Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 18px; }
+    table { border-collapse: collapse; width: 100%; max-width: 900px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }
+    th { background: #f2f2f2; }
+    img.sshot { max-width: 320px; height: auto; border: 1px solid #999; }
+  </style>
+</head>
 <body>
-<h1>Placeholder Report</h1>
-<p>This file will be overwritten by the GitHub Actions run.</p>
+<h1>Automated Test Report</h1>
+<table>
+  <thead>
+    <tr>
+      <th>No.</th>
+      <th>Steps</th>
+      <th>Screenshot</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1.</td>
+      <td>Fill value in username field.</td>
+      <td><img class="sshot" src="step1.png" alt="step1" /></td>
+    </tr>
+    <tr>
+      <td>2.</td>
+      <td>Empty value in username field.</td>
+      <td><img class="sshot" src="step2.png" alt="step2" /></td>
+    </tr>
+    <tr>
+      <td>3.</td>
+      <td>Report generated and saved to repository.</td>
+      <td>report: report.html</td>
+    </tr>
+  </tbody>
+</table>
 </body>
 </html>
