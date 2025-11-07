@@ -135,6 +135,7 @@ public class SeleniumReportGenerator {
                 .pass { color: green; font-weight: bold; }
                 .fail { color: red; font-weight: bold; }
                 img.sshot { max-width: 320px; height: auto; border: 1px solid #999; }
+                footer { margin-top: 20px; font-size: 0.9em; color: #555; }
               </style>
             </head>
             <body>
@@ -159,7 +160,15 @@ public class SeleniumReportGenerator {
                 </tr>
               </tbody>
             </table>
-            <p>Generated automatically by <b>SeleniumReportGenerator</b>.</p>
+            <p>Generated automatically by <b>Selenium (Java)</b>.</p>
+            <footer id="last-updated"></footer>
+            <script>
+              const footerDate = document.getElementById("last-updated");
+              const now = new Date();
+              const options = {{ year: "numeric", month: "short", day: "numeric" }};
+              const formattedDate = now.toLocaleDateString("en-US", options);
+              footerDate.textContent = `Last updated: ${{formattedDate}}`;
+            </script>
             </body>
             </html>
             """;
