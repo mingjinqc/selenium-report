@@ -165,9 +165,9 @@ public class SeleniumReportGenerator {
             <script>
               const footerDate = document.getElementById("last-updated");
               const now = new Date();
-              const options = {{ year: "numeric", month: "short", day: "numeric" }};
+              const options = { year: "numeric", month: "short", day: "numeric" };
               const formattedDate = now.toLocaleDateString("en-US", options);
-              footerDate.textContent = `Last updated: ${{formattedDate}}`;
+              footerDate.textContent = `Last updated: ${formattedDate}`;
             </script>
             </body>
             </html>
