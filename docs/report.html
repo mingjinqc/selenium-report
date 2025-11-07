@@ -17,7 +17,7 @@
 </head>
 <body>
 <h1>Automated Selenium Test Report</h1>
-<p><strong>Username value used:</strong> userexample@example.com</p>
+<p><strong>Username value used:</strong> userExample@example.com</p>
 <table>
   <thead>
     <tr><th>No.</th><th>Step</th><th>Result</th><th>Screenshot</th></tr>
@@ -42,9 +42,9 @@
 <script>
   const footerDate = document.getElementById("last-updated");
   const now = new Date();
-  const options = {{ year: "numeric", month: "short", day: "numeric" }};
+  const options = { year: "numeric", month: "short", day: "numeric" };
   const formattedDate = now.toLocaleDateString("en-US", options);
-  footerDate.textContent = `Last updated: ${{formattedDate}}`;
+  footerDate.textContent = `Last updated: ${formattedDate}`;
 </script>
 </body>
 </html>
